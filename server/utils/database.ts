@@ -25,7 +25,7 @@ export function getDbPool(): mysql.Pool {
       console.error('数据库初始化失败:', error);
     });
   }
-return pool;
+return pool;``
 }
 
 // 关闭连接池

@@ -32,8 +32,7 @@ export async function queryAPICall(
   end: number = new Date().getTime()
 ): Promise<APICall[]> {
   try {
-    // 使用getApiCalls方法，传入account作为fakeids参数
-    return await ApiService.getApiCalls([account]);
+    return await ApiService.queryAPICall(account,start,end );
   } catch (error) {
     console.error('查询API调用记录失败:', error);
     return [];

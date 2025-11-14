@@ -26,7 +26,7 @@ export interface Info {
  */
 export async function updateInfoCache(info: Info): Promise<boolean> {
   try {
-    let infoCache = await InfoService.getInfo(info.fakeid);
+    let infoCache= await InfoService.getInfo(info.fakeid);
     if (infoCache) {
       if (info.completed) {
         infoCache.completed = info.completed;
@@ -34,7 +34,6 @@ export async function updateInfoCache(info: Info): Promise<boolean> {
       infoCache.count += info.count;
       infoCache.articles += info.articles;
       infoCache.nickname = info.nickname;
-      infoCache.round_head_img = info.round_head_img;
       infoCache.total_count = info.total_count;
       infoCache.update_time = Math.round(Date.now() / 1000);
     } else {
@@ -44,12 +43,13 @@ export async function updateInfoCache(info: Info): Promise<boolean> {
         count: info.count,
         articles: info.articles,
         nickname: info.nickname,
-        round_head_img: info.round_head_img,
         total_count: info.total_count,
         create_time: Math.round(Date.now() / 1000),
         update_time: Math.round(Date.now() / 1000),
       };
     }
+    infoCache.round_head_img = info.round_head_img;
+
     await InfoService.upsertInfo(infoCache);
     return true;
   } catch (error) {

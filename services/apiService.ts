@@ -10,7 +10,7 @@ export class ApiService {
   static async createApiCall(apiCall: Omit<ApiCall, 'id' | 'created_at'>) {
     const response = await $fetch('/api/db/api', {
       method: 'POST',
-      body: apiCall
+      body: apiCall,
     });
     return response;
   }
@@ -23,8 +23,22 @@ export class ApiService {
       method: 'GET',
       query: {
         fakeids: fakeids?.join(','),
-        limit
-      }
+        limit:limit,
+      },
+    });
+    return response.data;
+  }
+  /**
+   * queryAPICall
+   */
+  static async queryAPICall(account: string, start: number, end: number) {
+    const response = await $fetch('/api/db/api', {
+      method: 'GET',
+      query: {
+        fakeids: account,
+        start: start,
+        end: end,
+      },
     });
     return response.data;
   }
@@ -35,7 +49,7 @@ export class ApiService {
   static async deleteApiCalls(fakeids: string[]) {
     const response = await $fetch('/api/db/api', {
       method: 'DELETE',
-      body: { fakeids }
+      body: { fakeids },
     });
     return response;
   }
@@ -46,7 +60,7 @@ export class ApiService {
   static async cleanupOldApiCalls(daysToKeep = 7) {
     const response = await $fetch('/api/db/api/cleanup', {
       method: 'POST',
-      body: { daysToKeep }
+      body: { daysToKeep },
     });
     return response;
   }
