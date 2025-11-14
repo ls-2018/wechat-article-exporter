@@ -348,6 +348,9 @@ const columnDefs = ref<ColDef[]>([
     colId: 'completed',
     headerName: '已加载完成',
     field: 'completed',
+    valueGetter: p => (
+      !!p.data.completed
+    ),
     cellDataType: 'boolean',
     filter: 'agSetColumnFilter',
     filterParams: booleanColumnFilterParams,
