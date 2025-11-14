@@ -1,4 +1,4 @@
-import { db } from './db';
+import { ApiService } from '~/services/apiService';
 
 export type ApiName = 'searchbiz' | 'appmsgpublish';
 
@@ -17,10 +17,13 @@ export type { APICall };
  * @param record
  */
 export async function updateAPICache(record: APICall) {
-  return db.transaction('rw', 'api', () => {
-    db.api.put(record);
+  try {
+    await ApiService.createApiCall(record);
     return true;
-  });
+  } catch (error) {
+    console.error('更新API调用记录失败:', error);
+    return false;
+  }
 }
 
 export async function queryAPICall(
@@ -28,11 +31,11 @@ export async function queryAPICall(
   start: number,
   end: number = new Date().getTime()
 ): Promise<APICall[]> {
-  return db.transaction('r', 'api', () => {
-    return db.api
-      .where('account')
-      .equals(account)
-      .and(item => item.call_time > start && item.call_time < end)
-      .toArray();
-  });
+  try {
+    // 使用getApiCalls方法，传入account作为fakeids参数
+    return await ApiService.getApiCalls([account]);
+  } catch (error) {
+    console.error('查询API调用记录失败:', error);
+    return [];
+  }
 }

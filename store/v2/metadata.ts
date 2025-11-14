@@ -1,4 +1,4 @@
-import { db } from './db';
+import { MetadataService } from '~/services/metadataService';
 import type { ArticleMetadata } from '~/utils/download/types';
 
 export type Metadata = ArticleMetadata & {
@@ -12,10 +12,13 @@ export type Metadata = ArticleMetadata & {
  * @param metadata
  */
 export async function updateMetadataCache(metadata: Metadata): Promise<boolean> {
-  return db.transaction('rw', 'metadata', () => {
-    db.metadata.put(metadata);
+  try {
+    await MetadataService.upsertMetadata(metadata);
     return true;
-  });
+  } catch (error) {
+    console.error('更新metadata缓存失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -23,5 +26,10 @@ export async function updateMetadataCache(metadata: Metadata): Promise<boolean> 
  * @param url
  */
 export async function getMetadataCache(url: string): Promise<Metadata | undefined> {
-  return db.metadata.get(url);
+  try {
+    return await MetadataService.getMetadata(url);
+  } catch (error) {
+    console.error('获取metadata缓存失败:', error);
+    return undefined;
+  }
 }

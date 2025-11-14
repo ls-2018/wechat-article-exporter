@@ -72,8 +72,14 @@ export default defineEventHandler(async event => {
     const articles = publish_page.publish_list
       .filter((item: any) => !!item.publish_info)
       .flatMap((item: any) => {
-        const publish_info = JSON.parse(item.publish_info);
-        return publish_info.appmsgex;
+        try {
+          const publish_info = JSON.parse(item.publish_info);
+          return publish_info.appmsgex || [];
+        } catch (error) {
+          console.error('解析 publish_info 失败:', error);
+          console.error('原始数据:', item.publish_info);
+          return [];
+        }
       });
     return {
       base_resp: resp.base_resp,

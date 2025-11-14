@@ -1,4 +1,4 @@
-import { db } from './db';
+import { HtmlService } from '~/services/htmlService';
 
 export interface HtmlAsset {
   fakeid: string;
@@ -13,10 +13,13 @@ export interface HtmlAsset {
  * @param html 缓存
  */
 export async function updateHtmlCache(html: HtmlAsset): Promise<boolean> {
-  return db.transaction('rw', 'html', () => {
-    db.html.put(html);
+  try {
+    await HtmlService.upsertHtml(html);
     return true;
-  });
+  } catch (error) {
+    console.error('更新html缓存失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -24,5 +27,10 @@ export async function updateHtmlCache(html: HtmlAsset): Promise<boolean> {
  * @param url
  */
 export async function getHtmlCache(url: string): Promise<HtmlAsset | undefined> {
-  return db.html.get(url);
+  try {
+    return await HtmlService.getHtml(url);
+  } catch (error) {
+    console.error('获取html缓存失败:', error);
+    return undefined;
+  }
 }

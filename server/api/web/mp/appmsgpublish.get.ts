@@ -15,6 +15,16 @@ interface AppMsgPublishQuery {
 export default defineEventHandler(async event => {
   const token = await getTokenFromStore(event);
 
+  // Check if token exists - if not, return clear authentication error
+  if (!token) {
+    return {
+      base_resp: {
+        ret: 200003,
+        err_msg: '请先登录微信公众号',
+      },
+    };
+  }
+
   const query = getQuery<AppMsgPublishQuery>(event);
   const id = query.id;
   const keyword = query.keyword;
@@ -33,7 +43,7 @@ export default defineEventHandler(async event => {
     type: '101_1',
     free_publish_type: 1,
     sub_action: 'list_ex',
-    token: token!,
+    token: token,
     lang: 'zh_CN',
     f: 'json',
     ajax: 1,

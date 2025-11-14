@@ -1,4 +1,4 @@
-import { db } from './db';
+import { InfoService } from '~/services/infoService';
 
 export interface Info {
   fakeid: string;
@@ -25,8 +25,8 @@ export interface Info {
  * @param info
  */
 export async function updateInfoCache(info: Info): Promise<boolean> {
-  return db.transaction('rw', 'info', async () => {
-    let infoCache = await db.info.get(info.fakeid);
+  try {
+    let infoCache = await InfoService.getInfo(info.fakeid);
     if (infoCache) {
       if (info.completed) {
         infoCache.completed = info.completed;
@@ -50,20 +50,26 @@ export async function updateInfoCache(info: Info): Promise<boolean> {
         update_time: Math.round(Date.now() / 1000),
       };
     }
-    db.info.put(infoCache);
+    await InfoService.upsertInfo(infoCache);
     return true;
-  });
+  } catch (error) {
+    console.error('更新info缓存失败:', error);
+    return false;
+  }
 }
 
 export async function updateLastUpdateTime(fakeid: string): Promise<boolean> {
-  return db.transaction('rw', 'info', async () => {
-    let infoCache = await db.info.get(fakeid);
+  try {
+    let infoCache = await InfoService.getInfo(fakeid);
     if (infoCache) {
       infoCache.last_update_time = Math.round(Date.now() / 1000);
-      db.info.put(infoCache);
+      await InfoService.upsertInfo(infoCache);
     }
     return true;
-  });
+  } catch (error) {
+    console.error('更新最后更新时间失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -71,34 +77,53 @@ export async function updateLastUpdateTime(fakeid: string): Promise<boolean> {
  * @param fakeid
  */
 export async function getInfoCache(fakeid: string): Promise<Info | undefined> {
-  return db.info.get(fakeid);
+  try {
+    return await InfoService.getInfo(fakeid);
+  } catch (error) {
+    console.error('获取info缓存失败:', error);
+    return undefined;
+  }
 }
 
 export async function getAllInfo(): Promise<Info[]> {
-  return db.info.toArray();
+  try {
+    return await InfoService.getAllInfo();
+  } catch (error) {
+    console.error('获取所有info失败:', error);
+    return [];
+  }
 }
 
 // 获取公众号的名称
 export async function getAccountNameByFakeid(fakeid: string): Promise<string | null> {
-  const account = await getInfoCache(fakeid);
-  if (!account) {
+  try {
+    const account = await getInfoCache(fakeid);
+    if (!account) {
+      return null;
+    }
+
+    return account.nickname || null;
+  } catch (error) {
+    console.error('获取公众号名称失败:', error);
     return null;
   }
-
-  return account.nickname || null;
 }
 
 // 批量导入公众号
 export async function importInfos(infos: Info[]): Promise<void> {
-  for (const info of infos) {
-    // 导入时需要把相关数量置空
-    info.completed = false;
-    info.count = 0;
-    info.articles = 0;
-    info.total_count = 0;
-    info.create_time = undefined;
-    info.update_time = undefined;
-    info.last_update_time = undefined;
-    await updateInfoCache(info);
+  try {
+    for (const info of infos) {
+      // 导入时需要把相关数量置空
+      info.completed = false;
+      info.count = 0;
+      info.articles = 0;
+      info.total_count = 0;
+      info.create_time = undefined;
+      info.update_time = undefined;
+      info.last_update_time = undefined;
+      await updateInfoCache(info);
+    }
+  } catch (error) {
+    console.error('批量导入公众号失败:', error);
   }
 }

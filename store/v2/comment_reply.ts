@@ -1,4 +1,4 @@
-import { db } from './db';
+import { CommentReplyService } from '~/services/commentReplyService';
 
 export interface CommentReplyAsset {
   fakeid: string;
@@ -13,10 +13,13 @@ export interface CommentReplyAsset {
  * @param reply 缓存
  */
 export async function updateCommentReplyCache(reply: CommentReplyAsset): Promise<boolean> {
-  return db.transaction('rw', 'comment_reply', () => {
-    db.comment_reply.put(reply, `${reply.url}:${reply.contentID}`);
+  try {
+    await CommentReplyService.upsertCommentReply(reply);
     return true;
-  });
+  } catch (error) {
+    console.error('更新comment回复缓存失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -25,5 +28,10 @@ export async function updateCommentReplyCache(reply: CommentReplyAsset): Promise
  * @param contentID
  */
 export async function getCommentReplyCache(url: string, contentID: string): Promise<CommentReplyAsset | undefined> {
-  return db.comment_reply.get(`${url}:${contentID}`);
+  try {
+    return await CommentReplyService.getCommentReply(url, contentID);
+  } catch (error) {
+    console.error('获取comment回复缓存失败:', error);
+    return undefined;
+  }
 }

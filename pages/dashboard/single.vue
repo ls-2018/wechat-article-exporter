@@ -18,7 +18,7 @@ import GridLoading from '~/components/grid/Loading.vue';
 import GridNoRows from '~/components/grid/NoRows.vue';
 import PreviewArticle from '~/components/preview/Article.vue';
 import toastFactory from '~/composables/toast';
-import { db } from '~/store/v2/db';
+import { ArticleService } from '~/services/articleService';
 import { getHtmlCache } from '~/store/v2/html';
 import type { AppMsgExWithFakeID } from '~/types/types';
 import { formatElapsedTime, formatTimeStamp } from '~/utils';
@@ -300,8 +300,12 @@ function buildVirtualArticle(row: SingleArticleRow): AppMsgExWithFakeID {
   };
 }
 
-function upsertArticleStub(row: SingleArticleRow) {
-  return db.article.put(buildVirtualArticle(row), `${row.fakeid}:${row.aid}`);
+async function upsertArticleStub(row: SingleArticleRow) {
+  const article = buildVirtualArticle(row);
+  return ArticleService.upsertArticle({
+    ...article,
+    id: `${row.fakeid}:${row.aid}`
+  });
 }
 
 function getSelectedRows(): SingleArticleRow[] {
@@ -430,19 +434,17 @@ async function updateRowFromHtml(row: SingleArticleRow) {
     }
   }
 
-  await db.article.put(
-    {
-      ...buildVirtualArticle(row),
-      digest: row.digest,
-      cover: cover,
-      cover_img: cover,
-      pic_cdn_url_1_1: cover,
-      pic_cdn_url_3_4: cover,
-      pic_cdn_url_16_9: cover,
-      pic_cdn_url_235_1: cover,
-    },
-    `${row.fakeid}:${row.aid}`
-  );
+  await ArticleService.upsertArticle({
+    ...buildVirtualArticle(row),
+    digest: row.digest,
+    cover: cover,
+    cover_img: cover,
+    pic_cdn_url_1_1: cover,
+    pic_cdn_url_3_4: cover,
+    pic_cdn_url_16_9: cover,
+    pic_cdn_url_235_1: cover,
+    id: `${row.fakeid}:${row.aid}`
+  });
 }
 
 function persistRow(row: SingleArticleRow) {
@@ -490,11 +492,7 @@ async function handleExport(format: ExportFormat) {
 }
 
 async function deleteRowData(row: SingleArticleRow) {
-  const key = `${row.fakeid}:${row.aid}`;
-  await db.transaction('rw', ['article', 'html'], async () => {
-    await db.article.delete(key);
-    await db.html.delete(row.link);
-  });
+  await ArticleService.deleteArticle(row.link);
 }
 
 async function removeRows() {

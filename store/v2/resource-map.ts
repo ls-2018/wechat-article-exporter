@@ -1,4 +1,4 @@
-import { db } from './db';
+import { ResourceMapService } from '~/services/resourceMapService';
 
 export interface ResourceMapAsset {
   fakeid: string;
@@ -11,10 +11,13 @@ export interface ResourceMapAsset {
  * @param resourceMap 缓存
  */
 export async function updateResourceMapCache(resourceMap: ResourceMapAsset): Promise<boolean> {
-  return db.transaction('rw', 'resource-map', () => {
-    db['resource-map'].put(resourceMap);
+  try {
+    await ResourceMapService.upsertResourceMap(resourceMap);
     return true;
-  });
+  } catch (error) {
+    console.error('更新resource-map缓存失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -22,5 +25,10 @@ export async function updateResourceMapCache(resourceMap: ResourceMapAsset): Pro
  * @param url
  */
 export async function getResourceMapCache(url: string): Promise<ResourceMapAsset | undefined> {
-  return db['resource-map'].get(url);
+  try {
+    return await ResourceMapService.getResourceMap(url);
+  } catch (error) {
+    console.error('获取resource-map缓存失败:', error);
+    return undefined;
+  }
 }

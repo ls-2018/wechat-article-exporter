@@ -14,6 +14,16 @@ interface SearchBizQuery {
 export default defineEventHandler(async event => {
   const token = await getTokenFromStore(event);
 
+  // Check if token exists - if not, return clear authentication error
+  if (!token) {
+    return {
+      base_resp: {
+        ret: 200003,
+        err_msg: '请先登录微信公众号',
+      },
+    };
+  }
+
   const query = getQuery<SearchBizQuery>(event);
   const keyword = query.keyword;
   const begin: number = query.begin || 0;
@@ -24,7 +34,7 @@ export default defineEventHandler(async event => {
     begin: begin,
     count: size,
     query: keyword,
-    token: token!,
+    token: token,
     lang: 'zh_CN',
     f: 'json',
     ajax: '1',

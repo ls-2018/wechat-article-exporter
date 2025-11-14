@@ -32,14 +32,15 @@ export default defineNuxtConfig({
     },
   },
   sourcemap: {
+    server: true,
     client: 'hidden',
   },
   nitro: {
     minify: process.env.NODE_ENV === 'production',
     storage: {
       kv: {
-        driver: process.env.NITRO_KV_DRIVER || 'memory',
-        base: process.env.NITRO_KV_BASE,
+        driver: "fs",
+        base: "./data/kv/",
       },
     },
   },

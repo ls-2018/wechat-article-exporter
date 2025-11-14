@@ -1,4 +1,4 @@
-import { db } from './db';
+import { AssetService } from '~/services/assetService';
 
 interface Asset {
   url: string;
@@ -13,10 +13,13 @@ export type { Asset };
  * @param asset
  */
 export async function updateAssetCache(asset: Asset): Promise<boolean> {
-  return db.transaction('rw', 'asset', () => {
-    db.asset.put(asset);
+  try {
+    await AssetService.upsertAsset(asset);
     return true;
-  });
+  } catch (error) {
+    console.error('更新asset缓存失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -24,6 +27,10 @@ export async function updateAssetCache(asset: Asset): Promise<boolean> {
  * @param url
  */
 export async function getAssetCache(url: string): Promise<Asset | undefined> {
-  db.transaction('r', 'asset', () => {});
-  return db.asset.get(url);
+  try {
+    return await AssetService.getAsset(url);
+  } catch (error) {
+    console.error('获取asset缓存失败:', error);
+    return undefined;
+  }
 }

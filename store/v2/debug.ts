@@ -1,4 +1,4 @@
-import { db } from './db';
+import { DebugService } from '~/services/debugService';
 
 export interface DebugAsset {
   type: string;
@@ -13,10 +13,13 @@ export interface DebugAsset {
  * @param html 缓存
  */
 export async function updateDebugCache(html: DebugAsset): Promise<boolean> {
-  return db.transaction('rw', 'debug', () => {
-    db.debug.put(html);
+  try {
+    await DebugService.upsertDebugInfo(html);
     return true;
-  });
+  } catch (error) {
+    console.error('更新debug缓存失败:', error);
+    return false;
+  }
 }
 
 /**
@@ -24,9 +27,19 @@ export async function updateDebugCache(html: DebugAsset): Promise<boolean> {
  * @param url
  */
 export async function getDebugCache(url: string): Promise<DebugAsset | undefined> {
-  return db.debug.get(url);
+  try {
+    return await DebugService.getDebugInfo(url);
+  } catch (error) {
+    console.error('获取debug缓存失败:', error);
+    return undefined;
+  }
 }
 
 export async function getDebugInfo(): Promise<DebugAsset[]> {
-  return db.debug.toArray();
+  try {
+    return await DebugService.getAllDebugInfo();
+  } catch (error) {
+    console.error('获取所有debug信息失败:', error);
+    return [];
+  }
 }

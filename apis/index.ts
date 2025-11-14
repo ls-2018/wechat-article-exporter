@@ -68,8 +68,14 @@ export async function getArticleList(account: Info, begin = 0, keyword = ''): Pr
     }
 
     const articles = publish_list.flatMap(item => {
-      const publish_info: PublishInfo = JSON.parse(item.publish_info);
-      return publish_info.appmsgex;
+      try {
+        const publish_info: PublishInfo = JSON.parse(item.publish_info);
+        return publish_info.appmsgex || [];
+      } catch (error) {
+        console.error('解析 publish_info 失败:', error);
+        console.error('原始数据:', item.publish_info);
+        return [];
+      }
     });
     return [articles, isCompleted, publish_page.total_count];
   } else if (resp.base_resp.ret === 200003) {
