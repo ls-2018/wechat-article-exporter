@@ -56,34 +56,25 @@ export async function initializeDatabase(pool: mysql.Pool): Promise<void> {
       }
     }
     
-    console.log(`📊 共解析出 ${statements.length} 条SQL语句`);
     if (statements.length === 0) {
-      console.log('⚠️  未找到任何CREATE TABLE语句，请检查schema.sql文件');
       return;
     }
     
     for (const statement of statements) {
       if (statement.toUpperCase().includes('CREATE TABLE')) {
         try {
-          console.log(`🔄 正在执行: ${statement.substring(0, 100)}...`);
           await pool.execute(statement);
-          console.log(`✅ 表创建成功: ${statement.substring(0, 50)}...`);
         } catch (error: any) {
           // 如果表已存在，忽略错误
           if (error.code === 'ER_TABLE_EXISTS_ERROR') {
-            console.log(`ℹ️  表已存在，跳过: ${statement.substring(0, 50)}...`);
           } else {
-            console.error(`❌ 创建表失败: ${error.message}`);
-            console.error(`❌ 失败的SQL: ${statement}`);
             throw error;
           }
         }
       }
     }
     
-    console.log('✅ 数据库表结构初始化完成');
   } catch (error) {
-    console.error('❌ 数据库初始化失败:', error);
     throw error;
   }
 }
