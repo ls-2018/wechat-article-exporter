@@ -31,16 +31,12 @@ export default defineNuxtConfig({
       ],
     },
   },
-  sourcemap: {
-    server: true,
-    client: 'hidden',
-  },
   nitro: {
     minify: process.env.NODE_ENV === 'production',
     storage: {
       kv: {
         driver: "fs",
-        base: "./data/kv/",
+        base: ".data/kv/",
       },
     },
   },

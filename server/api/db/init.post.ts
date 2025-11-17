@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     const pool = getDbPool();
     
     // 读取schema.sql文件
-    const schemaPath = path.join(process.cwd(), 'server/db/schema.sql');
+    const schemaPath = path.resolve(process.cwd(), 'server/db/schema.sql');
 
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema文件不存在: ${schemaPath}`);

@@ -8,7 +8,7 @@ import path from 'path';
 export async function initializeDatabase(pool: mysql.Pool): Promise<void> {
   try {
     // 读取schema.sql文件
-    const schemaPath = path.join(process.cwd(), 'server/db/schema.sql');
+    const schemaPath = path.resolve(process.cwd(), 'server/db/schema.sql');
     const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
     
     // 更智能的SQL语句分割

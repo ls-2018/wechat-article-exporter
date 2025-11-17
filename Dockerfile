@@ -1,5 +1,5 @@
 # 编译层
-FROM node:22-alpine AS build-env
+FROM dockerproxy.zetyun.cn/docker.io/library/node:22-alpine AS build-env
 
 # 安装 Yarn（Alpine 包管理器方式，轻量）
 RUN apk add --no-cache yarn
@@ -23,7 +23,7 @@ RUN yarn build
 
 
 # 运行时层
-FROM node:22-alpine
+FROM dockerproxy.zetyun.cn/docker.io/library/node:22-alpine
 
 ARG VERSION=unknown
 
@@ -40,6 +40,7 @@ WORKDIR /app
 
 # 复制构建输出
 COPY --from=build-env /app/.output ./
+COPY ./server/db ./server/db
 
 # 创建 KV 存储目录并设置权限（以 root 运行，确保 node 用户可写）
 RUN mkdir -p .data/kv && chown -R node:node /app
@@ -50,8 +51,7 @@ USER node
 # 暴露端口
 EXPOSE 3000
 
-# 设置环境变量：生产模式，监听所有接口
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+ENV HOST=0.0.0.0 PORT=3000
 
 # 启动命令：运行 Nitro 生成的服务器
 ENTRYPOINT ["node", "server/index.mjs"]

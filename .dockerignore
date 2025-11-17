@@ -29,3 +29,4 @@ nuxt-options.json
 
 # wrangler
 .wrangler
+!./server/db
