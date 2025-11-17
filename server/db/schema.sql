@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS articles (
     mediaapi_publish_status INT DEFAULT 0 COMMENT '发布状态',
     checking INT DEFAULT 0 COMMENT '审核状态',
     ban_flag INT DEFAULT 0 COMMENT '封禁标志',
+    itemidx INT COMMENT '',
     has_red_packet_cover INT DEFAULT 0 COMMENT '红包封面',
     album_id VARCHAR(100) COMMENT '专辑ID',
     appmsg_album_infos JSON COMMENT '专辑信息',

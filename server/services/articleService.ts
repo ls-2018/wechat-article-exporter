@@ -37,14 +37,15 @@ export async function upsertArticle(article: AppMsgExWithFakeID): Promise<string
   const has_red_packet_cover = article.has_red_packet_cover || 0;
   const album_id = article.album_id || '';
   const appmsg_album_infos = article.appmsg_album_infos || [];
-  
+  const itemidx = article.itemidx ||0;
+
   await pool.execute<ResultSetHeader>(
     `INSERT INTO articles (
       id, fakeid, aid, title, digest, link, cover, cover_img_theme_color,
       author_name, create_time, copyright_stat, copyright_type, is_deleted,
       is_pay_subscribe, item_show_type, media_duration, mediaapi_publish_status,
-      checking, ban_flag, has_red_packet_cover, album_id, appmsg_album_infos
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      checking, ban_flag, has_red_packet_cover, album_id, appmsg_album_infos,itemidx
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       title = VALUES(title), digest = VALUES(digest), cover = VALUES(cover),
       cover_img_theme_color = VALUES(cover_img_theme_color), author_name = VALUES(author_name),
@@ -61,7 +62,8 @@ export async function upsertArticle(article: AppMsgExWithFakeID): Promise<string
       copyright_stat, copyright_type, is_deleted, is_pay_subscribe,
       item_show_type, media_duration, mediaapi_publish_status,
       checking, ban_flag, has_red_packet_cover, album_id,
-      JSON.stringify(appmsg_album_infos)
+      JSON.stringify(appmsg_album_infos),
+      itemidx
     ]
   );
   
@@ -270,7 +272,8 @@ export async function getArticlesByFakeId(fakeid: string): Promise<ArticleRecord
     content: row.content,
     html_content: row.html_content,
     created_at: row.created_at,
-    updated_at: row.updated_at
+    updated_at: row.updated_at,
+    itemidx: row.itemidx,
   }));
 }
 
