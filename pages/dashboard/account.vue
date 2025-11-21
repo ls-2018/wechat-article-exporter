@@ -209,7 +209,13 @@ async function loadSelectedAccountArticle() {
   try {
     const rows = getSelectedRows();
     console.log(`开始同步 ${rows.length} 个公众号`);
-    
+    try {
+      const account =rows[0];
+      await loadAccountArticle(account);
+    } catch (e: any) {
+      console.error(`公众号 ${account} 同步失败:`, e.message);
+    }
+
     let successCount = 0;
     let failCount = 0;
     const failedAccounts: string[] = [];
@@ -243,7 +249,6 @@ async function loadSelectedAccountArticle() {
         failedAccounts.push(account.nickname);
         console.error(`公众号 ${account.nickname} 同步失败:`, e.message);
         // 继续处理下一个公众号，不中断整个循环
-        break;
       }
     }
     
