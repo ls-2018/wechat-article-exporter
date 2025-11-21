@@ -7,10 +7,8 @@ RUN apk add --no-cache yarn
 # 设置工作目录
 WORKDIR /app
 COPY package.json yarn.lock ./
-
 # 复制 package.json 和 lock 文件，安装依赖
-RUN --mount=type=cache,target=/app/node_modules,id=wechat \
-    yarn install --frozen-lockfile --production=true
+RUN yarn install --frozen-lockfile --production=true
 
 # 复制源代码
 COPY . .
