@@ -386,6 +386,7 @@ let _ws: WebSocket | null = null;
 
 // 启动监听服务
 async function startListenService(isManual = false) {
+  return ;
   const url = wsURL.value.trim();
   if (!url) {
     return;

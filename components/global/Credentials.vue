@@ -292,6 +292,7 @@ const wsMonitoring = ref(false);
 let _ws: WebSocket | null = null;
 
 async function startListenService() {
+  return ;
   const ws = new WebSocket(wsURL.value.trim());
   ws.addEventListener('open', () => {
     wsMonitoring.value = true;

@@ -35,6 +35,7 @@ import toastFactory from '~/composables/toast';
 import { exportAccountJsonFile } from '~/utils/exporter';
 import type { AccountManifest } from '~/types/account';
 import type { AccountEvent } from '~/types/events';
+import { onMounted, onBeforeUnmount } from 'vue';
 
 useHead({
   title: `公众号管理 | ${websiteName}`,
@@ -202,22 +203,185 @@ async function loadAccountArticle(account: Info, loadMore = true) {
 async function loadSelectedAccountArticle() {
   if (!checkLogin()) return;
 
+  // 重置取消状态
   isCanceled.value = false;
 
   try {
     const rows = getSelectedRows();
+    console.log(`开始同步 ${rows.length} 个公众号`);
+    
+    let successCount = 0;
+    let failCount = 0;
+    const failedAccounts: string[] = [];
+    
+    // 遍历所有选中的公众号，逐个同步
     for (const account of rows) {
-      await loadAccountArticle(account);
+      // 检查是否被取消
+      if (isCanceled.value) {
+        console.log('同步已取消');
+        break;
+      }
+      
+      try {
+          // 确保fakeid存在
+          const fakeid = account.fakeid;
+          if (!fakeid) {
+            console.warn(`公众号 ${account.nickname} 缺少fakeid，跳过同步`);
+            failCount++;
+            failedAccounts.push(account.nickname);
+            continue;
+          }
+          
+          console.log(`正在同步公众号: ${account.nickname} (${fakeid})`,new Date().toLocaleString());
+          // 直接设置当前正在同步的公众号ID
+          syncingRowId.value = fakeid;
+          
+          await loadAccountArticle(account);
+          successCount++;
+      } catch (e: any) {
+        failCount++;
+        failedAccounts.push(account.nickname);
+        console.error(`公众号 ${account.nickname} 同步失败:`, e.message);
+        // 继续处理下一个公众号，不中断整个循环
+        break;
+      }
     }
-    toast.success(`已成功同步 ${rows.length} 个公众号`);
+    
+    // 更新全局同步状态
+    isSyncing.value = false;
+    syncingRowId.value = null;
+    
+    // 根据同步结果显示不同的通知
+    if (successCount > 0) {
+      toast.success(`同步完成`, `成功同步 ${successCount} 个公众号${failCount > 0 ? `，失败 ${failCount} 个` : ''}`);
+    }
+    
+    if (failCount > 0) {
+      console.error(`同步失败的公众号:`, failedAccounts);
+      toast.error('部分同步失败', `有 ${failCount} 个公众号同步失败，请查看控制台获取详细信息`);
+    }
   } catch (e: any) {
-    toast.error('加载失败', e.message);
+    console.error('批量同步过程中发生错误:', e);
+    toast.error('批量同步失败', e.message);
+    // 确保错误情况下重置状态
+    isSyncing.value = false;
+    syncingRowId.value = null;
+  }
+}
+
+const autoCronExecting = ref(false);
+
+// 启动自动同步任务
+function startAutoSync() {
+  if (!checkLogin()) return;
+
+  if (autoCronExecting.value){
+    return;
+  }
+
+  if (isAutoSyncEnabled.value && autoSyncInterval.value > 0) {
+    // 设置定时器，时间间隔转换为毫秒
+    autoSyncTimer.value = window.setInterval(() => {
+      if (autoCronExecting.value){
+        return;
+      }
+      autoCronExecting.value = true;
+      console.log('执行定时自动同步任务');
+      loadSelectedAccountArticle().finally(() => {
+        autoCronExecting.value = false;
+      }); 
+    }, autoSyncInterval.value * 60 * 1000);
+    
+    console.log(`自动同步任务已启动，间隔时间：${autoSyncInterval.value} 分钟`);
+    toast.success('自动同步已启动', `将每隔 ${autoSyncInterval.value} 分钟自动同步所选公众号`);
+  }
+}
+
+// 停止自动同步任务
+function stopAutoSync() {
+  if (autoSyncTimer.value) {
+    window.clearInterval(autoSyncTimer.value);
+    autoSyncTimer.value = null;
+    console.log('自动同步任务已停止');
+  }
+}
+
+// 处理自动同步开关变化
+function handleAutoSyncToggle() {
+  if (isAutoSyncEnabled.value) {
+    // 验证是否有选中的公众号
+    const rows = getSelectedRows();
+    if (rows.length === 0) {
+      toast.error('无法启用自动同步', '请先选择要同步的公众号');
+      isAutoSyncEnabled.value = false;
+      return;
+    }
+    stopAutoSync();
+    // 启动自动同步
+    startAutoSync();
+    // 保存设置
+    saveAutoSyncSettings();
+  } else {
+    // 停止自动同步
+    stopAutoSync();
+    toast.info('自动同步已关闭');
+    // 保存设置
+    saveAutoSyncSettings();
+  }
+}
+
+// 处理时间间隔变化
+function handleIntervalChange() {
+  // 确保时间间隔在有效范围内
+  if (autoSyncInterval.value < 1) autoSyncInterval.value = 1;
+  if (autoSyncInterval.value > 1440) autoSyncInterval.value = 1440;
+  
+  // 如果自动同步已启用，重新启动定时器
+  if (isAutoSyncEnabled.value) {
+    stopAutoSync();
+    startAutoSync();
+    // 保存设置
+    saveAutoSyncSettings();
+  }
+}
+
+// 保存自动同步设置到本地存储
+function saveAutoSyncSettings() {
+  try {
+    const settings = {
+      enabled: isAutoSyncEnabled.value,
+      interval: autoSyncInterval.value
+    };
+    localStorage.setItem('wechat-article-exporter-auto-sync', JSON.stringify(settings));
+    console.log('自动同步设置已保存');
+  } catch (error) {
+    console.error('保存自动同步设置失败:', error);
+  }
+}
+
+// 从本地存储加载自动同步设置
+function loadAutoSyncSettings() {
+  try {
+    const savedSettings = localStorage.getItem('wechat-article-exporter-auto-sync');
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      isAutoSyncEnabled.value = settings.enabled || false;
+      autoSyncInterval.value = settings.interval || 60;
+      console.log('已加载自动同步设置');
+    }
+  } catch (error) {
+    console.error('加载自动同步设置失败:', error);
   }
 }
 
 const isDeleting = ref(false);
 const isSyncing = ref(false);
 const syncingRowId = ref<string | null>(null);
+
+// 定时任务相关状态变量
+const isAutoSyncEnabled = ref(false); // 是否启用自动同步
+const autoSyncTimer = ref<number | null>(null); // 自动同步的定时器ID
+const autoSyncInterval = ref(60); // 自动同步的时间间隔（分钟）
 
 let globalRowData: Info[] = [];
 
@@ -367,7 +531,7 @@ const columnDefs = ref<ColDef[]>([
     cellRenderer: GridAccountActions,
     cellRendererParams: {
       onSync: (params: ICellRendererParams) => {
-        // if (!checkLogin()) return;
+        if (!checkLogin()) return;
 
         isCanceled.value = false;
         loadAccountArticle(params.data)
@@ -459,11 +623,16 @@ const gridOptions: GridOptions = {
 };
 
 const gridApi = shallowRef<GridApi | null>(null);
-function onGridReady(params: GridReadyEvent) {
+async function onGridReady(params: GridReadyEvent) {
   gridApi.value = params.api;
 
   restoreColumnState();
-  refresh();
+  await refresh();
+  
+  // 表格数据加载完成后，应用保存的选中状态
+  setTimeout(() => {
+    applySavedSelection();
+  }, 100); // 短暂延迟确保数据已完全渲染
 }
 
 function onColumnStateChange() {
@@ -502,9 +671,55 @@ async function updateRow(fakeid: string) {
 
 // 当前是否有选中的行
 const hasSelectedRows = ref(false);
+
+// 保存选中状态到本地存储
+function saveSelectedRows() {
+  try {
+    const selectedRows = getSelectedRows();
+    const selectedFakeIds = selectedRows.map(row => row.fakeid);
+    localStorage.setItem('wechat-article-exporter-selected-accounts', JSON.stringify(selectedFakeIds));
+    console.log('已保存选中的公众号:', selectedFakeIds.length, '个');
+  } catch (error) {
+    console.error('保存选中状态失败:', error);
+  }
+}
+
+// 从本地存储加载选中状态
+function loadSelectedRows() {
+  try {
+    const savedIdsStr = localStorage.getItem('wechat-article-exporter-selected-accounts');
+    if (savedIdsStr) {
+      const savedFakeIds = JSON.parse(savedIdsStr);
+      console.log('已加载选中的公众号ID数量:', savedFakeIds.length);
+      return savedFakeIds;
+    }
+  } catch (error) {
+    console.error('加载选中状态失败:', error);
+  }
+  return [];
+}
+
+// 应用保存的选中状态
+function applySavedSelection() {
+  if (!gridApi.value || globalRowData.length === 0) return;
+  
+  const savedFakeIds = loadSelectedRows();
+  if (savedFakeIds.length === 0) return;
+  
+  console.log('正在应用保存的选中状态');
+  gridApi.value.forEachNode(node => {
+    if (savedFakeIds.includes(node.data.fakeid)) {
+      node.setSelected(true);
+    }
+  });
+}
+
 function onSelectionChanged(evt: SelectionChangedEvent) {
   hasSelectedRows.value = (evt.selectedNodes?.map(node => node.data) || []).length > 0;
+  // 保存选中状态到本地存储
+  saveSelectedRows();
 }
+
 function getSelectedRows() {
   const rows: Info[] = [];
   gridApi.value?.forEachNodeAfterFilterAndSort(node => {
@@ -536,8 +751,32 @@ function deleteSelectedAccounts() {
   });
 }
 
+onMounted(() => {
+  // 加载保存的自动同步设置
+  loadAutoSyncSettings();
+  
+  // 组件挂载时，如果启用了自动同步，等待表格数据加载完成后再检查选中状态
+  if (isAutoSyncEnabled.value) {
+    // 延迟检查，确保表格已加载且选中状态已恢复
+    setTimeout(() => {
+      const rows = getSelectedRows();
+      if (rows.length > 0) {
+        startAutoSync();
+        console.log('自动同步已启动，选中公众号数量:', rows.length);
+      } else {
+        // 如果没有选中的公众号，关闭自动同步
+        isAutoSyncEnabled.value = false;
+        saveAutoSyncSettings();
+        console.log('未选择公众号，自动同步已关闭');
+      }
+    }, 1500); // 稍长延迟，确保选中状态已应用
+  }
+});
+
 onBeforeUnmount(() => {
   stopAccountEvent();
+  // 组件卸载时，确保停止定时任务
+  stopAutoSync();
 });
 
 // 导入公众号
@@ -620,7 +859,7 @@ function exportAccount() {
 
     <div class="flex flex-col h-full divide-y divide-gray-200">
       <!-- 顶部操作区 -->
-      <header class="flex items-center gap-3 px-3 py-3">
+      <header class="flex items-center flex-wrap gap-3 px-3 py-3">
         <UButton icon="i-lucide:user-plus" color="blue" :disabled="isDeleting || addBtnLoading" @click="addAccount">
           {{ addBtnLoading ? '添加中...' : '添加' }}
         </UButton>
@@ -655,6 +894,31 @@ function exportAccount() {
           @click="loadSelectedAccountArticle"
           >同步</UButton
         >
+        
+        <!-- 自动同步控制 -->
+        <div class="flex items-center gap-2 ml-auto">
+          <label class="text-sm font-medium text-gray-700">自动同步：</label>
+          <label class="inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              class="sr-only peer" 
+              v-model="isAutoSyncEnabled"
+              @change="handleAutoSyncToggle"
+            />
+            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+          <div class="flex items-center gap-1" v-if="isAutoSyncEnabled">
+            <input 
+              type="number" 
+              min="1" 
+              max="1440" 
+              class="w-16 px-2 py-1 text-sm border border-gray-300 rounded" 
+              v-model.number="autoSyncInterval"
+              @change="handleIntervalChange"
+            />
+            <span class="text-sm text-gray-700">分钟</span>
+          </div>
+        </div>
       </header>
 
       <!-- 数据表格 -->
