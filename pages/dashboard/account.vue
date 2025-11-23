@@ -238,7 +238,8 @@ async function loadSelectedAccountArticle() {
             continue;
           }
           
-          console.log(`正在同步公众号: ${account.nickname} (${fakeid})`,new Date().toLocaleString());
+          // 使用 forEach 的索引参数作为 i
+          console.log(`[${rows.indexOf(account) + 1}/${rows.length}] 正在同步公众号: ${account.nickname} (${fakeid})`, new Date().toLocaleString());
           // 直接设置当前正在同步的公众号ID
           syncingRowId.value = fakeid;
           

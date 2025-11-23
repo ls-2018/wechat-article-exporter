@@ -1,5 +1,5 @@
 # 编译层
-FROM dockerproxy.zetyun.cn/docker.io/library/node:22-alpine AS build-env
+FROM docker.io/library/node:22-alpine AS build-env
 
 # 安装 Yarn（Alpine 包管理器方式，轻量）
 RUN apk add --no-cache yarn
@@ -22,7 +22,7 @@ RUN yarn build
 
 
 # 运行时层
-FROM dockerproxy.zetyun.cn/docker.io/library/node:22-alpine
+FROM docker.io/library/node:22-alpine
 
 ARG VERSION=unknown
 
