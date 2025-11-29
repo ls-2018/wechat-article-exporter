@@ -768,7 +768,7 @@ onMounted(() => {
       const rows = getSelectedRows();
       if (rows.length > 0) {
         startAutoSync();
-        console.log('自动同步已启动，选中公众号数量:', rows.length);
+        console.log('自动同步已启动，选中公众号数量:', rows.length, new Date().toLocaleString());
       } else {
         // 如果没有选中的公众号，关闭自动同步
         isAutoSyncEnabled.value = false;
