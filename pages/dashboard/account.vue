@@ -277,6 +277,24 @@ async function loadSelectedAccountArticle() {
 
 const autoCronExecting = ref(false);
 
+// 执行自动同步任务
+async function executeAutoSyncTask() {
+  if (autoCronExecting.value || !checkLogin()) {
+    return;
+  }
+  
+  autoCronExecting.value = true;
+  console.log('执行定时自动同步任务');
+  try {
+    await loadSelectedAccountArticle();
+  } catch (error) {
+    console.error('自动同步任务执行失败:', error);
+  } finally {
+    autoCronExecting.value = false;
+    lastSyncTime.value = Date.now(); // 更新上次同步时间
+  }
+}
+
 // 启动自动同步任务
 function startAutoSync() {
   if (!checkLogin()) return;
@@ -288,18 +306,37 @@ function startAutoSync() {
   if (isAutoSyncEnabled.value && autoSyncInterval.value > 0) {
     // 设置定时器，时间间隔转换为毫秒
     autoSyncTimer.value = window.setInterval(() => {
-      if (autoCronExecting.value){
-        return;
-      }
-      autoCronExecting.value = true;
-      console.log('执行定时自动同步任务');
-      loadSelectedAccountArticle().finally(() => {
-        autoCronExecting.value = false;
-      }); 
+      executeAutoSyncTask();
     }, autoSyncInterval.value * 60 * 1000);
     
-    console.log(`自动同步任务已启动，间隔时间：${autoSyncInterval.value} 分钟`);
+    console.log(`自动同步任务已启动，间隔时间：${autoSyncInterval.value} 分钟`, new Date().toLocaleString());
     toast.success('自动同步已启动', `将每隔 ${autoSyncInterval.value} 分钟自动同步所选公众号`);
+  }
+}
+
+// 检测页面从休眠状态恢复
+function handlePageVisibilityChange() {
+  if (document.visibilityState === 'visible' && isAutoSyncEnabled.value) {
+    checkAndSyncIfNeeded();
+  }
+}
+
+// 检测页面显示
+function handlePageShow() {
+  if (isAutoSyncEnabled.value) {
+    checkAndSyncIfNeeded();
+  }
+}
+
+// 检查是否需要同步
+function checkAndSyncIfNeeded() {
+  const now = Date.now();
+  const intervalMs = autoSyncInterval.value * 60 * 1000;
+  
+  // 如果距离上次同步的时间超过了设置的间隔时间，立即执行同步
+  if (now - lastSyncTime.value > intervalMs) {
+    console.log('检测到页面从休眠恢复，且已超过设定的同步间隔时间，立即执行同步');
+    executeAutoSyncTask();
   }
 }
 
@@ -388,6 +425,7 @@ const syncingRowId = ref<string | null>(null);
 const isAutoSyncEnabled = ref(false); // 是否启用自动同步
 const autoSyncTimer = ref<number | null>(null); // 自动同步的定时器ID
 const autoSyncInterval = ref(60); // 自动同步的时间间隔（分钟）
+const lastSyncTime = ref<number>(Date.now()); // 上次同步时间，用于检测休眠恢复
 
 let globalRowData: Info[] = [];
 
@@ -761,6 +799,11 @@ onMounted(() => {
   // 加载保存的自动同步设置
   loadAutoSyncSettings();
   
+  // 添加页面可见性变化事件监听器
+  document.addEventListener('visibilitychange', handlePageVisibilityChange);
+  // 添加页面显示事件监听器
+  window.addEventListener('pageshow', handlePageShow);
+  
   // 组件挂载时，如果启用了自动同步，等待表格数据加载完成后再检查选中状态
   if (isAutoSyncEnabled.value) {
     // 延迟检查，确保表格已加载且选中状态已恢复
@@ -768,7 +811,7 @@ onMounted(() => {
       const rows = getSelectedRows();
       if (rows.length > 0) {
         startAutoSync();
-        console.log('自动同步已启动，选中公众号数量:', rows.length, new Date().toLocaleString());
+        console.log('自动同步已启动，选中公众号数量:', rows.length);
       } else {
         // 如果没有选中的公众号，关闭自动同步
         isAutoSyncEnabled.value = false;
@@ -783,6 +826,10 @@ onBeforeUnmount(() => {
   stopAccountEvent();
   // 组件卸载时，确保停止定时任务
   stopAutoSync();
+  
+  // 移除事件监听器
+  document.removeEventListener('visibilitychange', handlePageVisibilityChange);
+  window.removeEventListener('pageshow', handlePageShow);
 });
 
 // 导入公众号
