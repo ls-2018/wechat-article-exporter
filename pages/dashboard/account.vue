@@ -304,6 +304,10 @@ function startAutoSync() {
   }
 
   if (isAutoSyncEnabled.value && autoSyncInterval.value > 0) {
+    // 初始化上次同步时间
+    lastSyncTime.value = Date.now();
+    console.log('初始化上次同步时间:', new Date(lastSyncTime.value).toLocaleString());
+    
     // 设置定时器，时间间隔转换为毫秒
     autoSyncTimer.value = window.setInterval(() => {
       executeAutoSyncTask();
@@ -316,13 +320,28 @@ function startAutoSync() {
 
 // 检测页面从休眠状态恢复
 function handlePageVisibilityChange() {
+  console.log('页面可见性变化:', document.visibilityState);
   if (document.visibilityState === 'visible' && isAutoSyncEnabled.value) {
+    console.log('页面变为可见，执行检查同步');
     checkAndSyncIfNeeded();
   }
 }
 
 // 检测页面显示
-function handlePageShow() {
+function handlePageShow(event: PageTransitionEvent) {
+  console.log('页面显示事件触发:', event);
+  // 检查是否是从BFCache恢复的页面
+  if (event.persisted) {
+    console.log('页面从BFCache恢复');
+  }
+  if (isAutoSyncEnabled.value) {
+    checkAndSyncIfNeeded();
+  }
+}
+
+// 检测窗口焦点
+function handleWindowFocus() {
+  console.log('窗口获得焦点');
   if (isAutoSyncEnabled.value) {
     checkAndSyncIfNeeded();
   }
@@ -332,11 +351,17 @@ function handlePageShow() {
 function checkAndSyncIfNeeded() {
   const now = Date.now();
   const intervalMs = autoSyncInterval.value * 60 * 1000;
+  const timeSinceLastSync = now - lastSyncTime.value;
+  
+  console.log(`检查同步需求: 现在=${new Date(now).toLocaleString()}, 上次同步=${new Date(lastSyncTime.value).toLocaleString()}`);
+  console.log(`距离上次同步时间: ${Math.floor(timeSinceLastSync / 60000)}分钟, 设定间隔: ${autoSyncInterval.value}分钟`);
   
   // 如果距离上次同步的时间超过了设置的间隔时间，立即执行同步
-  if (now - lastSyncTime.value > intervalMs) {
-    console.log('检测到页面从休眠恢复，且已超过设定的同步间隔时间，立即执行同步');
+  if (timeSinceLastSync > intervalMs) {
+    console.log('检测到已超过设定的同步间隔时间，立即执行同步');
     executeAutoSyncTask();
+  } else {
+    console.log(`距离下次同步还需等待: ${Math.floor((intervalMs - timeSinceLastSync) / 60000)}分钟`);
   }
 }
 
@@ -364,6 +389,10 @@ function handleAutoSyncToggle() {
     startAutoSync();
     // 保存设置
     saveAutoSyncSettings();
+    
+    // 可选：启用时立即执行一次同步
+    // console.log('自动同步启用，立即执行一次同步');
+    // executeAutoSyncTask();
   } else {
     // 停止自动同步
     stopAutoSync();
@@ -803,6 +832,8 @@ onMounted(() => {
   document.addEventListener('visibilitychange', handlePageVisibilityChange);
   // 添加页面显示事件监听器
   window.addEventListener('pageshow', handlePageShow);
+  // 添加窗口焦点事件监听器
+  window.addEventListener('focus', handleWindowFocus);
   
   // 组件挂载时，如果启用了自动同步，等待表格数据加载完成后再检查选中状态
   if (isAutoSyncEnabled.value) {
@@ -830,6 +861,7 @@ onBeforeUnmount(() => {
   // 移除事件监听器
   document.removeEventListener('visibilitychange', handlePageVisibilityChange);
   window.removeEventListener('pageshow', handlePageShow);
+  window.removeEventListener('focus', handleWindowFocus);
 });
 
 // 导入公众号
